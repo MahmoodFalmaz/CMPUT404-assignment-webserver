@@ -31,25 +31,23 @@ import os
 class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
-        
-        self.data = self.request.recv(1024).decode("utf-8")
-        self.split_lines = self.data.splitlines()
 
-        if (self.split_lines[0][0:3] != "GET"):
+        self.data = self.request.recv(1024).decode("utf-8")
+        self.split = self.data.strip().split(' ')
+        method = self.split[0]
+        path = self.split[1]
+        requestedPath = self.split[0:3]
+        str1 = " "
+        fullRequest = str1.join(requestedPath)
+        if ( method != "GET"):
             self.request.sendall(bytearray("HTTP/1.1 405 Method Not Allowed\r\n", "utf-8"))
             return
 
-        if "../../" in self.split_lines[0]:
+        if "../../" in fullRequest:
             self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\n", "utf-8"))
             return
-
-        requested = self.split_lines[0].split(" ")[1]
-        # print ("This is the requested: %s\n" % requested)
-        # print ("This is the requested[-1]: %s\n" % requested[-1])
-        # print ("This is the self.split_lines[0]: %s\n" % self.split_lines[0])
-
             
-        self.validate(requested)
+        self.validate(path)
 
     def validate(self,requested):
         if os.path.isdir("www" + requested):
