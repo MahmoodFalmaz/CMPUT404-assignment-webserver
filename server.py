@@ -1,5 +1,6 @@
 #  coding: utf-8 
 import socketserver
+import os
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -30,9 +31,49 @@ import socketserver
 class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
-        self.data = self.request.recv(1024).strip()
-        print ("Got a request of: %s\n" % self.data)
-        self.request.sendall(bytearray("OK",'utf-8'))
+        
+        self.data = self.request.recv(1024).decode("utf-8")
+        self.split_lines = self.data.splitlines()
+
+        if (self.split_lines[0][0:3] != "GET"):
+            self.request.sendall(bytearray("HTTP/1.1 405 Method Not Allowed\r\n", "utf-8"))
+            return
+
+        if "../../" in self.split_lines[0]:
+            self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\n", "utf-8"))
+            return
+
+        requested = self.split_lines[0].split(" ")[1]
+        # print ("This is the requested: %s\n" % requested)
+        # print ("This is the requested[-1]: %s\n" % requested[-1])
+        # print ("This is the self.split_lines[0]: %s\n" % self.split_lines[0])
+
+            
+        self.validate(requested)
+
+    def validate(self,requested):
+        if os.path.isdir("www" + requested):
+            if requested[-1] == "/":
+                path = "www" + requested + "index.html"
+                file = ""
+                data = open(path, 'r')
+                for line in data:
+                    file += line
+                self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type: text/%s; charset=utf-8\r\n\r\n"%(path.split(".")[1])+file, 'utf-8'))
+            else:
+                self.request.sendall(bytearray("HTTP/1.1 301 Moved Permanently\n", "utf-8"))
+        elif not os.path.isfile("www" + requested):
+            self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\n", "utf-8"))
+            return
+        else:
+            path = "www" + requested
+            file = ""
+            data = open(path, 'r')
+            for line in data:
+                file += line
+            self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type: text/%s; charset=utf-8\r\n\r\n"%(path.split(".")[1])+file, 'utf-8'))
+
+
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
